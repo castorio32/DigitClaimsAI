@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go Digit | AI Claim Triage</title>
+<style>
+:root{--digit:#00BFAE;--digit-dark:#008E82;--digit-soft:#E9FBF8;--ink:#222;--muted:#6D7175;--line:#E8ECEF;--page:#F7F9FA;--warn:#FFF7E6;--bad:#FDEDED;--bad-line:#F3C6C6;--bad-ink:#8A2E2E;--good:#EAF8EE;--good-line:#BEE6C8;--good-ink:#1F6B3A}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;overflow-x:hidden;width:100%}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--page);color:var(--ink);-webkit-text-size-adjust:100%}
+h1,h2,h3,h4{color:var(--ink);letter-spacing:-.025em;margin:0}
+p{margin:0}
+button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+img,svg{max-width:100%}
+.shell{max-width:1240px;margin:0 auto;padding:.8rem 16px 4rem;width:100%}
+
+/* ---------- Top utility + navbar ---------- */
+.utility{display:flex;justify-content:flex-end;gap:20px;font-size:.76rem;color:#6D7175;padding:5px 4px 8px}
+.navbar{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:1px solid var(--line);border-radius:15px;padding:11px 16px;box-shadow:0 5px 18px rgba(31,41,55,.04);margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.05rem;color:#111;text-decoration:none;background:none;border:none;padding:0;min-width:0}
+.brandmark{width:42px;height:34px;flex:0 0 auto;border-radius:10px 10px 10px 3px;background:var(--digit);display:grid;place-items:center;color:#fff;font-size:1.12rem;font-weight:900;transform:skew(-7deg)}
+.brandmark span{transform:skew(7deg)}
+.navlinks{display:flex;align-items:center;gap:22px;color:#444;font-size:.84rem;font-weight:650}
+.navlinks a{color:#454B4A;text-decoration:none;padding:10px 12px;border-radius:10px;transition:all .22s ease;display:inline-block;background:none;border:none;font:inherit;cursor:pointer}
+.navlinks a:hover{color:var(--digit);background:#EAFBF8;transform:translateY(-2px)}
+.navlinks a.active{color:#008E82;background:#EAFBF8}
+.nav-cta-link{background:var(--digit);color:#fff!important;text-decoration:none!important;padding:12px 18px;border-radius:10px;font-size:.78rem;font-weight:800;transition:all .22s ease;box-shadow:0 5px 14px rgba(0,191,174,.16);border:none;cursor:pointer;white-space:nowrap;flex:0 0 auto}
+.nav-cta-link:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 12px 24px rgba(0,191,174,.24)}
+.hamburger-btn{display:none;flex:0 0 auto;width:44px;height:44px;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);border-radius:10px;font-size:1.25rem;color:#333}
+.mobile-nav-panel{display:none;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px;margin:-6px 0 14px;box-shadow:0 5px 18px rgba(31,41,55,.05)}
+.mobile-nav-panel.open{display:flex;flex-direction:column;gap:3px}
+.mobile-nav-panel a{padding:13px 14px;border-radius:10px;font-size:.92rem;font-weight:700;color:#333;text-decoration:none;background:none;border:none;text-align:left;display:block;width:100%;min-height:44px}
+.mobile-nav-panel a.active{background:#EAFBF8;color:#008E82}
+@media(max-width:900px){
+  .navlinks{display:none}
+  .utility{display:none}
+  .hamburger-btn{display:flex}
+}
+@media(min-width:901px){.mobile-nav-panel{display:none!important}}
+@media(max-width:480px){.nav-cta-link{display:none}.brand div span{display:none}}
+
+/* ---------- Layout: sidebar + main ---------- */
+.layout{display:grid;grid-template-columns:280px 1fr;gap:22px;align-items:start;width:100%;min-width:0}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+.sidebar{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;position:sticky;top:14px;min-width:0}
+.sidebar-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sidebar-chevron{display:none;flex:0 0 auto;width:34px;height:34px;align-items:center;justify-content:center;background:#F4F6F7;border:1px solid var(--line);border-radius:8px;font-size:.8rem;color:#444}
+.sidebar h3{font-size:1rem;margin-bottom:2px}
+.sidebar .caption{color:var(--muted);font-size:.78rem;margin-bottom:14px}
+.sidebar-body{min-width:0}
+@media(max-width:900px){
+  .sidebar{position:static}
+  .sidebar-head{cursor:pointer}
+  .sidebar-chevron{display:flex}
+  .sidebar-body{display:none}
+  .sidebar-body.open{display:block}
+}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:.78rem;font-weight:700;color:#333;margin-bottom:6px}
+.field .help{font-size:.7rem;color:var(--muted);margin-top:4px}
+input[type=range]{width:100%;accent-color:var(--digit);min-height:28px}
+input[type=number],input[type=text],textarea,select{width:100%;border:1px solid #DDE3E6;border-radius:9px;padding:11px 12px;font-family:inherit;font-size:1rem;background:#fff;color:var(--ink);min-height:44px}
+textarea{min-height:120px;line-height:1.5}
+input[type=number]:focus,input[type=text]:focus,textarea:focus,select:focus{outline:2px solid var(--digit);outline-offset:1px}
+.slider-value{font-size:.78rem;color:var(--digit-dark);font-weight:800;float:right}
+hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
+.status-pill{border-radius:10px;padding:9px 12px;font-size:.8rem;font-weight:650;display:flex;gap:8px;align-items:center}
+.status-pill.info{background:#EAF3FB;color:#1D5286;border:1px solid #C9DFF3}
+.small-caption{font-size:.72rem;color:var(--muted);margin-top:6px}
+.btn{border-radius:9px;font-weight:800;min-height:44px;border:1px solid #DDE3E6;background:#fff;color:#222;padding:0 16px;width:100%;font-size:.9rem;transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,border-color .22s ease,background .22s ease}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(31,41,55,.08)}
+.btn.primary{background-image:linear-gradient(110deg,var(--digit) 0%,var(--digit) 40%,#20d8c6 50%,var(--digit) 60%,var(--digit) 100%);background-size:220% 100%;background-color:var(--digit);border-color:var(--digit);color:#fff}
+.btn.primary:hover{animation:shimmer 1.25s linear infinite;box-shadow:0 10px 22px rgba(0,191,174,.18)}
+
+/* ---------- Hero ---------- */
+.hero{display:grid;grid-template-columns:1.18fr .82fr;gap:28px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:22px;padding:34px 36px;box-shadow:0 8px 26px rgba(31,41,55,.05);margin-bottom:18px;position:relative;overflow:hidden}
+.hero:before{content:"";position:absolute;width:280px;height:280px;border-radius:50%;background:#E6FBF8;right:-90px;top:-110px}
+.hero-copy{position:relative;z-index:2}
+.eyebrow{color:var(--digit-dark);font-size:.78rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:2.55rem;line-height:1.08;margin:.55rem 0 .75rem;max-width:650px}
+.hero h1 em{font-style:normal;color:var(--digit-dark)}
+.hero p{font-size:1rem;line-height:1.65;color:var(--muted);max-width:650px;margin:0}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.hero-action{padding:10px 15px;border-radius:9px;font-size:.82rem;font-weight:800}
+.hero-action.primary{background:var(--digit);color:#fff}
+.hero-action.secondary{background:#fff;color:#333;border:1px solid var(--line)}
+.hero-panel{position:relative;z-index:2;background:linear-gradient(145deg,#E9FBF8,#F7FFFD);border:1px solid #C7F0EA;border-radius:18px;padding:20px}
+.hero-panel-title{font-size:.75rem;color:var(--muted);font-weight:750;text-transform:uppercase;letter-spacing:.07em}
+.hero-panel-value{font-size:1.3rem;font-weight:900;color:#222;margin:5px 0 14px}
+.mini-flow{display:grid;gap:8px}
+.mini-step{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #DDEEEB;border-radius:11px;padding:9px 10px;font-size:.8rem;font-weight:700;color:#333}
+.mini-dot{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--digit);color:white;font-size:.7rem;font-weight:900}
+@media(max-width:900px){.hero{grid-template-columns:1fr}.hero h1{font-size:2rem}}
+@media(max-width:480px){
+  .hero{padding:22px 18px;border-radius:16px}
+  .hero h1{font-size:1.55rem;margin:.45rem 0 .6rem}
+  .hero p{font-size:.9rem}
+  .hero-action{padding:9px 12px;font-size:.78rem}
+}
+
+/* ---------- Quick launch ---------- */
+.quick-title{text-align:center;font-size:.92rem;font-weight:800;color:#333;margin:20px 0 12px}
+.quick-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:22px}
+@media(max-width:900px){.quick-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:480px){.quick-grid{grid-template-columns:repeat(2,1fr);gap:8px}}
+.quick-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 10px;text-align:center;box-shadow:0 4px 14px rgba(31,41,55,.035);min-height:88px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,border-color .22s ease,background .22s ease}
+.quick-card:hover{transform:translateY(-8px) scale(1.035);border-color:var(--digit);box-shadow:0 16px 30px rgba(0,191,174,.18);background:#F8FFFD}
+.quick-card:active{transform:translateY(-2px) scale(.985)}
+.quick-icon{width:38px;height:38px;margin:0 auto;border-radius:12px;background:var(--digit-soft);display:grid;place-items:center;font-size:1.1rem}
+.quick-name{font-size:.78rem;font-weight:800;color:#333}
+.quick-card.active{border:1.5px solid var(--digit);box-shadow:0 5px 18px rgba(0,191,174,.10)}
+
+.workspace-banner{display:flex;align-items:center;gap:13px;background:linear-gradient(100deg,#E9FBF8,#fff);border:1px solid #BCEBE5;border-radius:14px;padding:12px 15px;margin:-5px 0 22px}
+.workspace-banner .orb{width:34px;height:34px;border-radius:11px;background:var(--digit);color:#fff;display:grid;place-items:center;font-weight:900}
+.workspace-banner strong{display:block;color:#1E2928}
+.workspace-banner span{font-size:.78rem;color:var(--muted)}
+
+.disclaimer{border:1px solid #F2D8A7;background:var(--warn);color:#6B4C14;border-radius:12px;padding:12px 15px;margin:0 0 22px;font-size:.86rem}
+.section-kicker{color:var(--digit-dark);font-size:.73rem;font-weight:850;text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px}
+.section-title{font-size:1.55rem;font-weight:900;color:var(--ink);margin-bottom:3px}
+.section-copy{color:var(--muted);margin-bottom:15px;font-size:.9rem}
+.stepper{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:5px 0 22px}
+@media(max-width:900px){.stepper{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:480px){.stepper{grid-template-columns:1fr 1fr}.step{font-size:.72rem;padding:9px}}
+.step{background:#fff;border:1px solid var(--line);border-radius:13px;padding:11px;color:var(--muted);font-size:.78rem;font-weight:700}
+.step.active{border-color:#7EDFD6;background:var(--digit-soft);color:var(--digit-dark)}
+.step-num{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#EEF1F3;margin-right:5px;font-size:.68rem}
+.step.active .step-num{background:var(--digit);color:#fff}
+
+/* ---------- Cards / KPI / route ---------- */
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 5px 18px rgba(31,41,55,.035);margin-bottom:16px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.grid-2{grid-template-columns:1fr}}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:700px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:420px){.grid-4{grid-template-columns:1fr}}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:15px;padding:16px;min-height:108px;box-shadow:0 5px 18px rgba(31,41,55,.035)}
+.kpi-label{color:var(--muted);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.055em}
+.kpi-value{color:var(--ink);font-size:1.48rem;font-weight:900;margin-top:8px}
+.kpi-note{color:var(--muted);font-size:.73rem;margin-top:3px}
+.status-box{border:1px solid #BCEBE5;background:var(--digit-soft);border-radius:12px;padding:12px 14px;margin:10px 0}
+.small-label{font-size:.68rem;font-weight:850;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.route-card{padding:16px;border-radius:14px;border:1px solid #BCEBE5;background:linear-gradient(135deg,var(--digit-soft),#fff)}
+.route-title{color:var(--digit-dark);font-size:1.1rem;font-weight:900}
+.route-copy{color:var(--muted);font-size:.8rem;margin-top:4px}
+.confidence-track{height:8px;border-radius:999px;background:#E9EDEF;overflow:hidden;margin-top:8px}
+.confidence-fill{height:100%;border-radius:999px;background:var(--digit)}
+
+/* ---------- Alerts ---------- */
+.alert{border-radius:12px;padding:12px 14px;font-size:.85rem;margin:10px 0;border:1px solid}
+.alert.warn{background:var(--warn);border-color:#F2D8A7;color:#6B4C14}
+.alert.error{background:var(--bad);border-color:var(--bad-line);color:var(--bad-ink)}
+.alert.success{background:var(--good);border-color:var(--good-line);color:var(--good-ink)}
+.alert.info{background:#EAF3FB;border-color:#C9DFF3;color:#1D5286}
+.bullet-list{list-style:none;padding:0;margin:6px 0}
+.bullet-list li{font-size:.86rem;color:#333;padding:4px 0}
+.bullet-list li:before{content:"•  "}
+
+/* ---------- Forms / tables ---------- */
+label.form-label{display:block;font-size:.82rem;font-weight:700;color:#222;margin-bottom:6px;margin-top:14px}
+.radio-group{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.radio-option{display:flex;align-items:center;gap:10px;font-size:.9rem;padding:9px 6px;min-height:40px}
+.radio-option input,.checkbox-row input{width:18px;height:18px;flex:0 0 auto}
+.checkbox-row{display:flex;align-items:flex-start;gap:10px;margin-top:14px;font-size:.9rem;padding:2px 0}
+table.dframe{width:100%;border-collapse:collapse;font-size:.83rem}
+table.dframe th{text-align:left;background:#F4F6F7;padding:8px 10px;font-weight:800;color:#333;border-bottom:1px solid var(--line);white-space:nowrap}
+table.dframe td{padding:8px 10px;border-bottom:1px solid var(--line);color:#333}
+.table-wrap{border:1px solid var(--line);border-radius:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+
+.footer-card{margin-top:28px;background:#202326;color:#fff;border-radius:18px;padding:22px 24px}
+.footer-card strong{font-size:1rem}
+.footer-card p{color:#C9CED3;font-size:.8rem;margin:.4rem 0 0}
+.caption{color:var(--muted);font-size:.78rem;margin-top:10px}
+.divider{border:none;border-top:1px solid var(--line);margin:22px 0}
+
+details.expander{border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:#fff}
+details.expander summary{cursor:pointer;font-weight:800;font-size:.9rem;color:#222}
+details.expander pre{white-space:pre-wrap;font-family:inherit;font-size:.86rem;color:#333;line-height:1.6}
+details.expander code{background:#F1F3F4;padding:1px 5px;border-radius:4px;font-size:.85em}
+
+/* ---------- Motion ---------- */
+@keyframes pageEnter{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes floatCard{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(0,191,174,.20)}70%{box-shadow:0 0 0 12px rgba(0,191,174,0)}100%{box-shadow:0 0 0 0 rgba(0,191,174,0)}}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes scan{0%,100%{transform:translateY(-8px);opacity:.15}50%{transform:translateY(55px);opacity:.7}}
+.hero,.disclaimer,.stepper,.kpi,.route-card,.card{animation:pageEnter .5s cubic-bezier(.2,.8,.2,1) both}
+.hero-panel{animation:floatCard 5s ease-in-out infinite}
+.mini-dot{animation:pulseRing 2.4s ease-out infinite}
+.claim-illustration{margin-top:14px;background:#fff;border:1px solid #D7F0EC;border-radius:14px;padding:8px;overflow:hidden}
+.claim-illustration svg{width:100%;height:auto;display:block}
+.claim-car{transform-origin:center;animation:floatCard 4.6s ease-in-out infinite}
+.scan-line{animation:scan 2.8s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* ---------- General small-screen refinements ---------- */
+@media(max-width:480px){
+  .shell{padding:.6rem 12px 3rem}
+  .card{padding:14px}
+  .section-title{font-size:1.28rem}
+  .section-copy{font-size:.85rem}
+  .kpi{padding:13px;min-height:92px}
+  .kpi-value{font-size:1.25rem}
+  .footer-card{padding:18px}
+  .grid-2{gap:12px}
+  .utility{gap:12px}
+}
+/* Wider tap targets and no hover-lift artifacts on touch devices */
+@media (hover:none){
+  .quick-card:hover,div.btn:hover,.nav-cta-link:hover{transform:none}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="utility"><span>Claims Support</span><span>Audit &amp; Governance</span><span>Accessibility</span></div>
+  <div class="navbar">
+    <button class="brand" data-nav="workspace"><div class="brandmark"><span>D</span></div><div>Digit <span style="font-weight:550;color:#6D7175">Claims AI</span></div></button>
+    <div class="navlinks" id="navlinks"></div>
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu" aria-expanded="false">☰</button>
+    <button class="nav-cta-link" data-nav="workspace">Claims Console</button>
+  </div>
+  <div class="mobile-nav-panel" id="mobile-nav-panel"></div>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main id="main"></main>
+  </div>
+
+  <hr class="divider">
+  <div class="footer-card">
+    <strong>Digit Claims AI Prototype</strong>
+    <p>AI-assisted decision support with mandatory human verification before final settlement action.</p>
+  </div>
+  <p class="caption">Go Digit AI-Assisted Claim Triage Prototype • Decision-support demonstration only • AI generated triage suggestion. Human verification required before final settlement action.</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const APP_VERSION = "Prototype v2.0 • Experience Redesign";
+const MODEL_NAME = "RTOCF-Triage-Simulator";
+const ROUTES = ["Tier 1: Fast-Track","Tier 2: Standard Adjuster","Tier 3: Senior Investigation"];
+const SEVERITIES = ["LOW","MEDIUM","HIGH","UNDETERMINED"];
+const PAGE_LABELS = {
+  workspace: "Triage Workspace",
+  claims: "Claims",
+  hitl: "HITL Review",
+  audit: "Audit Trail",
+  resources: "Resources",
+};
+
+const MOCK_SCENARIOS = {
+"Clear Fast-Track Claim":
+`FNOL ID: GD-MTR-1001
+Policy Number: POL-MTR-2026-001
+
+Incident:
+The insured vehicle was reversing slowly in a residential parking
+area and struck a stationary pillar.
+
+No third party was involved.
+No injuries were reported.
+Vehicle remains drivable.
+
+Damage:
+Minor scratches and dent on rear bumper.
+
+Garage estimate:
+INR 18,500.
+
+Documents received:
+- Claim form
+- Driving licence
+- Registration certificate
+- Policy details
+- Three damage photographs
+- Garage repair estimate
+
+Customer confirms no bodily injury and no third-party damage.`,
+
+"Suspicious Inconsistent Loss Claim":
+`FNOL ID: GD-MTR-2002
+Policy Number: POL-MTR-2026-087
+
+Incident:
+Customer states the vehicle was damaged after hitting a divider
+at approximately 10:30 PM.
+
+Initial telephone statement says only the front bumper was damaged.
+
+Garage note later describes damage to the front bumper,
+left door and rear quarter panel.
+
+Initial repair estimate:
+INR 42,000.
+
+Second garage estimate:
+INR 1,38,000.
+
+Customer says police were informed, but no FIR or police report
+has been supplied.
+
+Photographs appear incomplete.
+Incident occurred shortly after policy inception.
+
+Documents received:
+- Registration certificate
+- Driving licence
+- Four photographs
+- Two inconsistent repair estimates
+
+Potential inconsistencies require review.`,
+
+"High-Value Complex Multi-Party Claim":
+`FNOL ID: GD-MTR-3003
+Policy Number: POL-MTR-2026-155
+
+Incident:
+Multi-vehicle collision involving the insured SUV, a commercial
+vehicle and two additional cars.
+
+Two persons reportedly received medical attention.
+Third-party property damage is reported.
+
+Insured vehicle has major front and side damage and is not drivable.
+
+Estimated insured vehicle repair:
+INR 8,75,000.
+
+Potential third-party exposure:
+Amount not yet confirmed.
+
+Documents received:
+- Claim form
+- Registration certificate
+- Driving licence
+- Accident photographs
+- Preliminary garage estimate
+- Hospital document for one injured person
+
+Pending / unclear:
+- Complete police documentation
+- Third-party statements
+- Final medical documentation
+- Final repair estimate
+- Third-party loss values
+
+Complex liability and severity review required.`,
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  page: "workspace",
+  activeWorkspace: "Motor Triage",
+  selectedScenario: "Clear Fast-Track Claim",
+  claimText: MOCK_SCENARIOS["Clear Fast-Track Claim"],
+  triageResult: null,
+  auditLog: [],
+  committedStatus: "Awaiting Triage",
+  lastClaimHash: null,
+  temperature: 0.1,
+  confidenceThreshold: 80,
+  highValueThreshold: 500000,
+  sidebarOpen: false,
+};
+
+const DEFAULT_STATE_KEYS = ["triageResult","auditLog","selectedScenario","claimText","lastClaimHash","committedStatus","activeWorkspace"];
+
+function resetSession(){
+  state.triageResult = null;
+  state.auditLog = [];
+  state.selectedScenario = "Clear Fast-Track Claim";
+  state.claimText = MOCK_SCENARIOS["Clear Fast-Track Claim"];
+  state.lastClaimHash = null;
+  state.committedStatus = "Awaiting Triage";
+  state.activeWorkspace = "Motor Triage";
+  render();
+}
+
+/* ============================================================
+   UTILITY FUNCTIONS (ported from Python)
+   ============================================================ */
+function nowTimestamp(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+async function claimHash(text){
+  try{
+    const enc = new TextEncoder().encode(text);
+    const buf = await crypto.subtle.digest("SHA-256", enc);
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("").slice(0,12);
+  }catch(e){
+    // Fallback non-cryptographic hash if SubtleCrypto is unavailable (e.g. non-HTTPS context).
+    let h = 0;
+    for(let i=0;i<text.length;i++){ h = (Math.imul(31,h) + text.charCodeAt(i)) | 0; }
+    return Math.abs(h).toString(16).padStart(12,"0").slice(0,12);
+  }
+}
+
+function normalizeText(text){
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function extractMoneyValues(text){
+  const regex = /(?:INR|Rs\.?|₹)\s*([\d,]+)/gi;
+  const values = [];
+  let m;
+  while((m = regex.exec(text)) !== null){
+    const num = parseInt(m[1].replace(/,/g, ""), 10);
+    if(!isNaN(num)) values.push(num);
+  }
+  return values;
+}
+
+function keywordPresent(lowerText, keywords){
+  return keywords.some(k => lowerText.includes(k.toLowerCase()));
+}
+
+function uniqueList(items){
+  const seen = new Set();
+  const out = [];
+  for(const item of items){
+    if(!seen.has(item)){ out.push(item); seen.add(item); }
+  }
+  return out;
+}
+
+function fmtInt(n){
+  return n.toLocaleString("en-IN");
+}
+
+/* ============================================================
+   DETERMINISTIC FALLBACK TRIAGE ENGINE (ported from Python)
+   ============================================================ */
+function deterministicTriage(claimText, confidenceThreshold, highValueThreshold){
+  const clean = normalizeText(claimText);
+  const lower = clean.toLowerCase();
+
+  const moneyValues = extractMoneyValues(clean);
+  const maxEstimate = moneyValues.length ? Math.max(...moneyValues) : null;
+
+  let missingEvidence = [];
+  let redFlags = [];
+  let reasonCodes = [];
+
+  const injurySignal = keywordPresent(lower, ["injured","injuries","medical attention","hospital","bodily injury"]);
+  const explicitNoInjury = keywordPresent(lower, ["no injuries","no one was injured","no bodily injury"]);
+  const thirdPartySignal = keywordPresent(lower, ["third-party","third party","multi-vehicle","multiple vehicle","commercial vehicle"]);
+  const inconsistentSignal = keywordPresent(lower, ["inconsistent","conflict","contradict","two inconsistent","initial estimate","second garage estimate"]);
+  const fraudSignal = keywordPresent(lower, ["shortly after policy inception","suspicious","potential inconsistencies","inconsistent loss"]);
+  const notDrivable = keywordPresent(lower, ["not drivable","undrivable","cannot be driven"]);
+
+  if(lower.includes("no fir") || lower.includes("no police report")){
+    missingEvidence.push("Police/FIR documentation applicability requires review");
+  }
+  if(lower.includes("pending / unclear")){
+    missingEvidence.push("One or more claim documents remain pending or unclear");
+  }
+  if(lower.includes("photographs appear incomplete")){
+    missingEvidence.push("Complete damage photographs");
+  }
+  if(thirdPartySignal && keywordPresent(lower, ["third-party statements","third party statements"])){
+    if(lower.includes("pending") || lower.includes("unclear")){
+      missingEvidence.push("Complete third-party statements");
+    }
+  }
+  if(injurySignal && lower.includes("final medical documentation")){
+    missingEvidence.push("Final medical documentation");
+  }
+  if(lower.includes("final repair estimate") && (lower.includes("pending") || lower.includes("unclear"))){
+    missingEvidence.push("Final repair estimate");
+  }
+  missingEvidence = uniqueList(missingEvidence);
+
+  if(inconsistentSignal){
+    redFlags.push("Material inconsistency detected in claim narrative or estimates");
+    reasonCodes.push("MATERIAL_CONFLICT");
+  }
+  if(new Set(moneyValues).size >= 2){
+    const spread = Math.max(...moneyValues) - Math.min(...moneyValues);
+    if(spread >= 50000){
+      redFlags.push("Large variance detected between reported monetary estimates");
+      reasonCodes.push("ESTIMATE_VARIANCE");
+    }
+  }
+  if(fraudSignal){
+    redFlags.push("Configured anomaly indicator detected; human review required");
+    reasonCodes.push("ANOMALY_INDICATOR");
+  }
+  if(thirdPartySignal){ reasonCodes.push("THIRD_PARTY_COMPLEXITY"); }
+  if(injurySignal && !explicitNoInjury){ reasonCodes.push("INJURY_INDICATOR"); }
+  if(notDrivable){ reasonCodes.push("VEHICLE_NOT_DRIVABLE"); }
+
+  let severityPoints = 0;
+  if(maxEstimate !== null){
+    if(maxEstimate < 50000) severityPoints += 1;
+    else if(maxEstimate < highValueThreshold) severityPoints += 2;
+    else severityPoints += 4;
+  }
+  if(injurySignal && !explicitNoInjury) severityPoints += 3;
+  if(thirdPartySignal) severityPoints += 2;
+  if(inconsistentSignal) severityPoints += 2;
+  if(fraudSignal) severityPoints += 3;
+  if(notDrivable) severityPoints += 2;
+
+  let severity;
+  if(severityPoints <= 2) severity = "LOW";
+  else if(severityPoints <= 6) severity = "MEDIUM";
+  else severity = "HIGH";
+
+  const highValue = maxEstimate !== null && maxEstimate >= highValueThreshold;
+  const investigationTrigger = fraudSignal || inconsistentSignal || (injurySignal && thirdPartySignal);
+
+  let route;
+  if(investigationTrigger || highValue) route = "Tier 3: Senior Investigation";
+  else if(severity === "MEDIUM" || thirdPartySignal) route = "Tier 2: Standard Adjuster";
+  else route = "Tier 1: Fast-Track";
+
+  let confidence = 94;
+  confidence -= Math.min(missingEvidence.length * 6, 24);
+  if(inconsistentSignal) confidence -= 12;
+  if(moneyValues.length === 0) confidence -= 8;
+  if(fraudSignal) confidence -= 5;
+  confidence = Math.max(35, Math.min(99, confidence));
+
+  const humanReviewTriggers = [];
+  if(confidence < confidenceThreshold) humanReviewTriggers.push("Confidence below [CONFIDENCE_THRESHOLD]");
+  if(highValue) humanReviewTriggers.push("Claim exceeds configured high-value threshold");
+  if(inconsistentSignal) humanReviewTriggers.push("Material evidence conflict");
+  if(fraudSignal) humanReviewTriggers.push("Fraud/anomaly red flag");
+  if(injurySignal && !explicitNoInjury) humanReviewTriggers.push("Reported injury / medical involvement");
+  if(thirdPartySignal) humanReviewTriggers.push("Third-party or multi-party complexity");
+
+  const humanReviewRequired = true;
+
+  const estimateText = maxEstimate !== null
+    ? `Highest reported estimate detected: INR ${fmtInt(maxEstimate)}.`
+    : "No reliable monetary estimate was detected.";
+
+  const summaryParts = [estimateText, `Preliminary severity: ${severity}.`];
+  if(explicitNoInjury) summaryParts.push("Source narrative explicitly reports no injury.");
+  else if(injurySignal) summaryParts.push("Medical/injury involvement requires human validation.");
+  if(thirdPartySignal) summaryParts.push("Third-party or multi-party involvement detected.");
+  if(redFlags.length) summaryParts.push("One or more anomaly/conflict indicators require review.");
+
+  return {
+    schema_tag: "[SCHEMA_TAG]",
+    claim_summary: summaryParts.join(" "),
+    severity_tier: severity,
+    recommended_route: route,
+    missing_evidence: missingEvidence,
+    red_flags: uniqueList(redFlags),
+    confidence_score: confidence,
+    human_review_required: humanReviewRequired,
+    human_review_triggers: uniqueList(humanReviewTriggers),
+    reason_codes: uniqueList(reasonCodes),
+    reported_estimates: moneyValues,
+    engine: "DETERMINISTIC_FALLBACK",
+    decision_notice: "NON_BINDING_TRIAGE_GUIDANCE_REQUIRES_HUMAN_VALIDATION",
+  };
+}
+
+function callTriageEngine(claimText, temperature, confidenceThreshold, highValueThreshold){
+  // Production integration point: replace with an approved LLM endpoint call.
+  // This prototype always uses the deterministic fallback engine.
+  return deterministicTriage(claimText, confidenceThreshold, highValueThreshold);
+}
+
+function addAuditEvent(eventType, actor, details){
+  state.auditLog.push({ Timestamp: nowTimestamp(), Event: eventType, Actor: actor, Details: details });
+}
+
+/* ============================================================
+   RENDER HELPERS
+   ============================================================ */
+function esc(s){
+  const d = document.createElement("div");
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+function statusBadgeHtml(status){
+  return `<div class="status-box"><span class="small-label">CURRENT TRIAGE STATUS</span><br><strong>${esc(status)}</strong></div>`;
+}
+
+/* ============================================================
+   NAV
+   ============================================================ */
+function renderNav(){
+  const linksHtml = Object.entries(PAGE_LABELS).map(([key,label]) =>
+    `<a class="${state.page===key?"active":""}" data-nav="${key}">${label}</a>`
+  ).join("");
+  document.getElementById("navlinks").innerHTML = linksHtml;
+  // Mobile panel mirrors the same links, and is explicitly closed on every
+  // render (i.e. every navigation) for the expected auto-close behavior.
+  const mobilePanel = document.getElementById("mobile-nav-panel");
+  mobilePanel.innerHTML = linksHtml;
+  mobilePanel.classList.remove("open");
+  document.getElementById("hamburger-btn").setAttribute("aria-expanded", "false");
+}
+
+function wireMobileNavToggle(){
+  const btn = document.getElementById("hamburger-btn");
+  const panel = document.getElementById("mobile-nav-panel");
+  btn.addEventListener("click", ()=>{
+    const isOpen = panel.classList.toggle("open");
+    btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  });
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+function renderSidebar(){
+  const el = document.getElementById("sidebar");
+  el.innerHTML = `
+    <div class="sidebar-head" id="sidebar-toggle-btn">
+      <div>
+        <h3>⚙️ AI Triage Controls</h3>
+        <div class="caption">Tune the demonstration model and HITL gates.</div>
+      </div>
+      <button class="sidebar-chevron" id="sidebar-chevron" aria-label="Toggle controls" aria-expanded="${state.sidebarOpen?"true":"false"}">${state.sidebarOpen?"▲":"▼"}</button>
+    </div>
+
+    <div class="sidebar-body ${state.sidebarOpen?"open":""}" id="sidebar-body">
+      <div class="field" style="margin-top:14px">
+        <label>[TEMPERATURE] <span class="slider-value" id="temp-val">${state.temperature.toFixed(1)}</span></label>
+        <input type="range" id="temperature" min="0" max="1" step="0.1" value="${state.temperature}">
+        <div class="help">Used by a future LLM integration. The deterministic fallback does not use temperature.</div>
+      </div>
+
+      <div class="field">
+        <label>[CONFIDENCE_THRESHOLD] <span class="slider-value" id="conf-val">${state.confidenceThreshold}</span></label>
+        <input type="range" id="confidenceThreshold" min="50" max="100" step="1" value="${state.confidenceThreshold}">
+        <div class="help">Cases below this confidence require explicit human review.</div>
+      </div>
+
+      <div class="field">
+        <label>High-Value HITL Threshold (INR)</label>
+        <input type="number" id="highValueThreshold" min="100000" step="50000" value="${state.highValueThreshold}">
+        <div class="help">Claims at or above this estimated value cannot bypass HITL.</div>
+      </div>
+
+      <hr class="sep">
+      <h3 style="font-size:.92rem">System Status</h3>
+      <div class="status-pill info">ℹ️ Demo mode • deterministic fallback</div>
+      <div class="small-caption">Model: ${esc(MODEL_NAME)}</div>
+      <div class="small-caption">${esc(APP_VERSION)}</div>
+
+      <hr class="sep">
+      <button class="btn" id="reset-session-btn">Reset Session</button>
+    </div>
+  `;
+
+  document.getElementById("temperature").addEventListener("input", e=>{
+    state.temperature = parseFloat(e.target.value);
+    document.getElementById("temp-val").textContent = state.temperature.toFixed(1);
+  });
+  document.getElementById("confidenceThreshold").addEventListener("input", e=>{
+    state.confidenceThreshold = parseInt(e.target.value,10);
+    document.getElementById("conf-val").textContent = state.confidenceThreshold;
+  });
+  document.getElementById("highValueThreshold").addEventListener("change", e=>{
+    let v = parseInt(e.target.value,10);
+    if(isNaN(v) || v < 100000) v = 100000;
+    state.highValueThreshold = v;
+    e.target.value = v;
+  });
+  document.getElementById("reset-session-btn").addEventListener("click", resetSession);
+
+  // Collapsible on mobile: toggled directly on the DOM (not a full render())
+  // so that any in-progress typing elsewhere on the page (e.g. the HITL form)
+  // is never wiped out by an unrelated sidebar interaction.
+  document.getElementById("sidebar-toggle-btn").addEventListener("click", ()=>{
+    state.sidebarOpen = !state.sidebarOpen;
+    const body = document.getElementById("sidebar-body");
+    const chevron = document.getElementById("sidebar-chevron");
+    body.classList.toggle("open", state.sidebarOpen);
+    chevron.textContent = state.sidebarOpen ? "▲" : "▼";
+    chevron.setAttribute("aria-expanded", state.sidebarOpen ? "true" : "false");
+  });
+}
+
+/* ============================================================
+   WORKSPACE HERO + QUICK LAUNCH
+   ============================================================ */
+function heroHtml(){
+  return `
+  <div class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow">AI-assisted claim triage</div>
+      <h1>Make claim triage <em>simple, fast &amp; human-controlled.</em></h1>
+      <p>Turn FNOL narratives, damage notes and supporting evidence into a structured recommendation — while keeping the authorized claims handler in control of every consequential routing decision.</p>
+      <div class="hero-actions"><span class="hero-action primary">Start Claim Triage</span><span class="hero-action secondary">Human-in-the-Loop by design</span></div>
+    </div>
+    <div class="hero-panel">
+      <div class="hero-panel-title">How this prototype works</div>
+      <div class="hero-panel-value">Claim → AI → Human → Route</div>
+      <div class="mini-flow">
+        <div class="mini-step"><span class="mini-dot">1</span> Ingest FNOL &amp; evidence</div>
+        <div class="mini-step"><span class="mini-dot">2</span> Extract, score &amp; explain</div>
+        <div class="mini-step"><span class="mini-dot">3</span> Claims handler validates</div>
+        <div class="mini-step"><span class="mini-dot">4</span> Authorized route is logged</div>
+      </div>
+      <div class="claim-illustration" aria-label="AI assisted motor claim illustration">
+        <svg viewBox="0 0 430 150" role="img">
+          <rect x="0" y="0" width="430" height="150" rx="16" fill="#F6FFFD"/>
+          <circle cx="360" cy="38" r="55" fill="#E2F9F5"/>
+          <path d="M25 120H405" stroke="#D4E8E5" stroke-width="3" stroke-linecap="round"/>
+          <g class="claim-car">
+            <path d="M72 96l18-35c5-9 12-14 23-14h96c10 0 18 4 25 13l27 36" fill="#00BFAE" opacity=".95"/>
+            <path d="M104 58h99c7 0 12 3 17 9l13 18H91l10-21c1-3 2-4 3-6z" fill="#DDF8F4"/>
+            <rect x="58" y="84" width="219" height="34" rx="13" fill="#00A99A"/>
+            <circle cx="102" cy="119" r="16" fill="#263230"/><circle cx="235" cy="119" r="16" fill="#263230"/>
+            <circle cx="102" cy="119" r="7" fill="#D7E2E0"/><circle cx="235" cy="119" r="7" fill="#D7E2E0"/>
+            <rect x="63" y="91" width="23" height="9" rx="4" fill="#FFF1A8"/><rect x="249" y="91" width="23" height="9" rx="4" fill="#FFD3D3"/>
+          </g>
+          <g transform="translate(300 58)">
+            <rect width="98" height="65" rx="12" fill="white" stroke="#BDEAE4"/>
+            <circle cx="22" cy="22" r="10" fill="#E9FBF8"/><path d="M18 22l3 3 6-7" fill="none" stroke="#008E82" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="40" y="16" width="43" height="6" rx="3" fill="#CDEAE6"/><rect x="14" y="41" width="69" height="6" rx="3" fill="#E4EFED"/><rect x="14" y="52" width="50" height="5" rx="2.5" fill="#E4EFED"/>
+            <rect class="scan-line" x="8" y="7" width="82" height="3" rx="2" fill="#00BFAE"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="quick-title">What would you like to do?</div>
+  <div class="disclaimer"><strong>Important:</strong> AI generated triage suggestion. Human verification required before final settlement action.</div>
+  `;
+}
+
+const QUICK_ACTIONS = [
+  { icon:"🚗", label:"Motor Triage", workspace:"Motor Triage", page:"workspace" },
+  { icon:"📄", label:"Document Review", workspace:"Document Review", page:"claims" },
+  { icon:"◉", label:"AI Analysis", workspace:"AI Analysis", page:"workspace" },
+  { icon:"👤", label:"HITL Desk", workspace:"HITL Desk", page:"hitl" },
+  { icon:"✓", label:"Audit Trail", workspace:"Audit Trail", page:"audit" },
+];
+
+const WORKSPACE_COPY = {
+  "Motor Triage": ["🚗","Create or load an FNOL and begin AI-assisted motor claim triage."],
+  "Document Review": ["📄","Review the narrative, uploaded evidence and missing-document signals."],
+  "AI Analysis": ["◉","Run structured extraction, severity scoring, confidence and routing analysis."],
+  "HITL Desk": ["👤","Validate, override or escalate the AI recommendation with mandatory notes."],
+  "Audit Trail": ["✓","Inspect the human/AI decision history and export the audit record."],
+};
+
+function quickLaunchHtml(){
+  const cards = QUICK_ACTIONS.map(a => `
+    <button class="quick-card ${state.activeWorkspace===a.workspace?"active":""}" data-quick="${esc(a.workspace)}" data-quickpage="${a.page}">
+      <div class="quick-icon">${a.icon}</div>
+      <div class="quick-name">${esc(a.label)}</div>
+    </button>
+  `).join("");
+  const [wsIcon, wsCopy] = WORKSPACE_COPY[state.activeWorkspace];
+  return `
+  <div class="quick-grid">${cards}</div>
+  <div class="workspace-banner"><div class="orb">${wsIcon}</div><div><strong>${esc(state.activeWorkspace)}</strong><span>${esc(wsCopy)}</span></div></div>
+  `;
+}
+
+/* ============================================================
+   INTAKE + AI OUTPUT (shared by workspace & claims pages)
+   ============================================================ */
+function intakeAndOutputHtml(){
+  const scenarioOptions = Object.keys(MOCK_SCENARIOS).map(s =>
+    `<option value="${esc(s)}" ${s===state.selectedScenario?"selected":""}>${esc(s)}</option>`
+  ).join("");
+
+  let outputHtml = "";
+  if(state.triageResult){
+    const r = state.triageResult;
+    outputHtml = `
+    <hr class="divider">
+    <div class="section-kicker">AI analysis</div>
+    <div class="section-title">Triage Recommendation</div>
+    <div class="section-copy">Evidence-derived recommendation with confidence, exceptions and mandatory human-review triggers.</div>
+
+    <div class="grid-4">
+      <div class="kpi"><div class="kpi-label">Severity</div><div class="kpi-value">${esc(r.severity_tier)}</div><div class="kpi-note">Preliminary assessment</div></div>
+      <div class="kpi"><div class="kpi-label">AI Confidence</div><div class="kpi-value">${r.confidence_score}%</div><div class="confidence-track"><div class="confidence-fill" style="width:${r.confidence_score}%"></div></div></div>
+      <div class="kpi"><div class="kpi-label">Missing Evidence</div><div class="kpi-value">${r.missing_evidence.length}</div><div class="kpi-note">Items requiring attention</div></div>
+      <div class="kpi"><div class="kpi-label">Risk Flags</div><div class="kpi-value">${r.red_flags.length}</div><div class="kpi-note">Anomaly indicators</div></div>
+    </div>
+
+    ${statusBadgeHtml(state.committedStatus)}
+
+    <h4 style="margin-top:16px">Claim Summary</h4>
+    <p style="font-size:.9rem;color:#333;line-height:1.6">${esc(r.claim_summary)}</p>
+
+    <h4 style="margin-top:16px">AI Routing Recommendation</h4>
+    <div class="route-card"><div class="small-label">Suggested route</div><div class="route-title">${esc(r.recommended_route)}</div><div class="route-copy">Non-binding recommendation. Human validation remains authoritative.</div></div>
+
+    ${r.confidence_score < state.confidenceThreshold ? `<div class="alert warn">AI confidence is below the configured threshold. Manual review is mandatory.</div>` : ""}
+
+    ${r.human_review_triggers.length ? `
+      <h4 style="margin-top:16px">Mandatory Human Review Triggers</h4>
+      <ul class="bullet-list">${r.human_review_triggers.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>
+    ` : ""}
+
+    <div class="grid-2" style="margin-top:10px">
+      <div>
+        <h4>Missing / Unclear Evidence</h4>
+        ${r.missing_evidence.length
+          ? `<ul class="bullet-list">${r.missing_evidence.map(i=>`<li>${esc(i)}</li>`).join("")}</ul>`
+          : `<div class="alert success">No missing evidence detected by prototype rules.</div>`}
+      </div>
+      <div>
+        <h4>Risk / Anomaly Indicators</h4>
+        ${r.red_flags.length
+          ? `<ul class="bullet-list">${r.red_flags.map(f=>`<li>${esc(f)}</li>`).join("")}</ul>`
+          : `<div class="alert success">No configured anomaly indicators detected.</div>`}
+      </div>
+    </div>
+
+    ${r.reported_estimates.length ? `
+      <h4 style="margin-top:16px">Reported Monetary Estimates</h4>
+      <div class="table-wrap">
+        <table class="dframe">
+          <thead><tr><th>Estimate #</th><th>Amount (INR)</th></tr></thead>
+          <tbody>${r.reported_estimates.map((v,i)=>`<tr><td>${i+1}</td><td>${fmtInt(v)}</td></tr>`).join("")}</tbody>
+        </table>
+      </div>
+    ` : ""}
+    `;
+  }
+
+  return `
+  <div class="section-kicker">Workspace</div>
+  <div class="section-title">Claim Intake &amp; Ingestion</div>
+  <div class="section-copy">Load a demonstration scenario or paste structured/unstructured FNOL evidence to begin.</div>
+
+  <div class="stepper">
+    <div class="step active"><span class="step-num">1</span>Intake</div>
+    <div class="step"><span class="step-num">2</span>AI Analysis</div>
+    <div class="step"><span class="step-num">3</span>Risk Routing</div>
+    <div class="step"><span class="step-num">4</span>Human Review</div>
+    <div class="step"><span class="step-num">5</span>Audit</div>
+  </div>
+
+  <div class="card">
+    <div class="grid-2">
+      <div>
+        <label class="form-label" style="margin-top:0">Pre-loaded Mock Scenario</label>
+        <select id="scenario-select">${scenarioOptions}</select>
+        <div style="margin-top:10px"><button class="btn" id="load-scenario-btn">Load Scenario</button></div>
+      </div>
+      <div>
+        <label class="form-label" style="margin-top:0">Upload Claim Narrative / Damage Log</label>
+        <input type="file" id="file-upload" accept=".txt,.csv,.json">
+        <div class="help" style="font-size:.72rem;color:var(--muted);margin-top:6px">Prototype supports text-like files (.txt, .csv, .json).</div>
+      </div>
+    </div>
+
+    <label class="form-label">Incident Description / Claim Evidence</label>
+    <textarea id="claim-text" rows="14" placeholder="Enter FNOL narrative, vehicle damage description, estimated loss, documents received, injuries, third-party details, etc.">${esc(state.claimText)}</textarea>
+
+    <div style="display:flex;gap:16px;align-items:center;margin-top:14px;flex-wrap:wrap">
+      <button class="btn primary" style="width:auto;padding:0 22px" id="run-triage-btn">Run AI Triage</button>
+      <span class="caption" style="margin-top:0">The prototype uses deterministic parsing when no approved LLM integration is configured.</span>
+    </div>
+    <div id="triage-error"></div>
+  </div>
+
+  ${outputHtml}
+  `;
+}
+
+function wireIntakeAndOutput(){
+  const scenarioSelect = document.getElementById("scenario-select");
+  if(scenarioSelect){
+    scenarioSelect.addEventListener("change", e=>{
+      state.selectedScenario = e.target.value;
+      state.claimText = MOCK_SCENARIOS[state.selectedScenario];
+      state.triageResult = null;
+      render();
+    });
+  }
+  const loadBtn = document.getElementById("load-scenario-btn");
+  if(loadBtn){
+    loadBtn.addEventListener("click", ()=>{
+      state.claimText = MOCK_SCENARIOS[state.selectedScenario];
+      state.triageResult = null;
+      render();
+    });
+  }
+  const fileInput = document.getElementById("file-upload");
+  if(fileInput){
+    fileInput.addEventListener("change", e=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ev=>{
+        const text = ev.target.result;
+        if(text && text.trim()){
+          state.claimText = text;
+          render();
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+  const textArea = document.getElementById("claim-text");
+  if(textArea){
+    textArea.addEventListener("input", e=>{ state.claimText = e.target.value; });
+  }
+  const runBtn = document.getElementById("run-triage-btn");
+  if(runBtn){
+    runBtn.addEventListener("click", async ()=>{
+      const errBox = document.getElementById("triage-error");
+      errBox.innerHTML = "";
+      const text = state.claimText || "";
+      if(!text.trim()){
+        errBox.innerHTML = `<div class="alert error">Claim submission is empty. Enter a claim narrative or load a mock scenario.</div>`;
+        return;
+      }
+      try{
+        const result = callTriageEngine(text, state.temperature, state.confidenceThreshold, state.highValueThreshold);
+        const hash = await claimHash(text);
+        state.triageResult = result;
+        state.lastClaimHash = hash;
+        state.committedStatus = "AI Recommendation Generated — Human Review Pending";
+        addAuditEvent(
+          "AI_TRIAGE_GENERATED",
+          MODEL_NAME,
+          `Route=${result.recommended_route}; Severity=${result.severity_tier}; Confidence=${result.confidence_score}%; InputHash=${hash}`
+        );
+        render();
+      }catch(exc){
+        errBox.innerHTML = `<div class="alert error">Triage processing failed safely. Technical detail: ${esc(exc.message||exc)}</div>`;
+      }
+    });
+  }
+}
+
+/* ============================================================
+   PAGE: WORKSPACE
+   ============================================================ */
+function renderWorkspacePage(){
+  return `
+    ${heroHtml()}
+    ${quickLaunchHtml()}
+    ${intakeAndOutputHtml()}
+  `;
+}
+
+/* ============================================================
+   PAGE: CLAIMS
+   ============================================================ */
+function renderClaimsPage(){
+  return intakeAndOutputHtml();
+}
+
+/* ============================================================
+   PAGE: HITL REVIEW
+   ============================================================ */
+function renderHitlPage(){
+  const r = state.triageResult;
+  if(!r){
+    return `
+    <div class="section-kicker">Human governance</div>
+    <div class="section-title">HITL Review Desk</div>
+    <div class="section-copy">No AI recommendation is waiting for review.</div>
+    <div class="alert info">Run a claim through Triage Workspace first. The resulting recommendation will appear here for human validation.</div>
+    <button class="btn" style="width:auto;padding:0 18px" data-nav="workspace">← Go to Triage Workspace</button>
+    `;
+  }
+
+  const severityOptions = SEVERITIES.map(s => `<option value="${s}" ${s===r.severity_tier?"selected":""}>${s}</option>`).join("");
+  const routeOptions = ROUTES.map(rt => `<option value="${esc(rt)}" ${rt===r.recommended_route?"selected":""}>${esc(rt)}</option>`).join("");
+  const decisionOptions = ["Approve AI Routing Recommendation","Override AI Recommendation","Escalate for Specialist Review"];
+  const reasonOptions = [
+    "AI recommendation confirmed after evidence review",
+    "MODEL_ERROR","NEW_INFORMATION","POLICY_INTERPRETATION",
+    "BUSINESS_RULE_EXCEPTION","DATA_QUALITY","FRAUD_OR_ANOMALY_REVIEW","OTHER",
+  ];
+
+  return `
+  <hr class="divider">
+  <div class="section-kicker">Human governance</div>
+  <div class="section-title">Verification Console</div>
+  <div class="section-copy">Review evidence, validate severity and accept, override or escalate the AI recommendation.</div>
+
+  <div class="alert warn">The AI recommendation cannot become an authorized triage decision until a human reviewer commits a decision below.</div>
+
+  <div class="card">
+    <label class="form-label" style="margin-top:0">Human Reviewer / Claims Handler</label>
+    <input type="text" id="reviewer-name" placeholder="Enter reviewer name or employee ID">
+
+    <label class="form-label">Validated Severity</label>
+    <select id="human-severity">${severityOptions}</select>
+
+    <label class="form-label">Validated Routing</label>
+    <select id="human-route">${routeOptions}</select>
+
+    <label class="form-label">Human Decision</label>
+    <div class="radio-group">
+      ${decisionOptions.map((opt,i)=>`
+        <label class="radio-option"><input type="radio" name="decision-action" value="${esc(opt)}" ${i===0?"checked":""}> ${esc(opt)}</label>
+      `).join("")}
+    </div>
+
+    <label class="form-label">Review / Override Reason</label>
+    <select id="override-reason">${reasonOptions.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("")}</select>
+
+    <label class="form-label">Mandatory Reviewer Notes</label>
+    <textarea id="reviewer-notes" rows="6" placeholder="Document what was verified, why the route was accepted or changed, and any unresolved evidence."></textarea>
+
+    <label class="checkbox-row"><input type="checkbox" id="confirm-evidence-review"> I confirm that I reviewed the available claim evidence before committing this triage decision.</label>
+
+    <div style="margin-top:16px"><button class="btn primary" style="width:auto;padding:0 22px" id="submit-review-btn">Commit Human Triage Decision</button></div>
+    <div id="hitl-messages"></div>
+  </div>
+  `;
+}
+
+function wireHitlPage(){
+  const submitBtn = document.getElementById("submit-review-btn");
+  if(!submitBtn) return;
+  submitBtn.addEventListener("click", ()=>{
+    const r = state.triageResult;
+    const reviewerName = document.getElementById("reviewer-name").value;
+    const humanSeverity = document.getElementById("human-severity").value;
+    const humanRoute = document.getElementById("human-route").value;
+    let decisionAction = document.querySelector('input[name="decision-action"]:checked').value;
+    const overrideReason = document.getElementById("override-reason").value;
+    const reviewerNotes = document.getElementById("reviewer-notes").value;
+    const confirmEvidenceReview = document.getElementById("confirm-evidence-review").checked;
+    const msgBox = document.getElementById("hitl-messages");
+
+    const errors = [];
+    if(!reviewerName.trim()) errors.push("Human reviewer name / employee ID is required.");
+    if(!reviewerNotes.trim()) errors.push("Reviewer notes are mandatory.");
+    if(!confirmEvidenceReview) errors.push("Evidence review confirmation is required.");
+
+    if(errors.length){
+      msgBox.innerHTML = errors.map(e=>`<div class="alert error">${esc(e)}</div>`).join("");
+      return;
+    }
+
+    const originalRoute = r.recommended_route;
+    let finalRoute, finalStatus;
+
+    if(decisionAction === "Escalate for Specialist Review"){
+      finalRoute = "Tier 3: Senior Investigation";
+      finalStatus = "Escalated — Specialist Review Required";
+    }else if(decisionAction === "Override AI Recommendation"){
+      finalRoute = humanRoute;
+      finalStatus = "Human Override Committed";
+    }else{
+      finalRoute = humanRoute;
+      if(finalRoute !== originalRoute){
+        finalStatus = "Human Override Committed";
+        decisionAction = "Override AI Recommendation";
+      }else{
+        finalStatus = "Human-Validated Triage Committed";
+      }
+    }
+
+    const details = `AI Route=${originalRoute}; Human Route=${finalRoute}; Human Severity=${humanSeverity}; Action=${decisionAction}; Reason=${overrideReason}; Notes=${reviewerNotes.trim()}`;
+    addAuditEvent("HUMAN_TRIAGE_DECISION", reviewerName.trim(), details);
+    state.committedStatus = finalStatus;
+
+    msgBox.innerHTML = `
+      <div class="alert success">Human triage decision committed: ${esc(finalRoute)}</div>
+      <div class="alert info">This records the triage/routing decision only. It does not approve, deny, repudiate, or settle the claim.</div>
+    `;
+  });
+}
+
+/* ============================================================
+   PAGE: AUDIT
+   ============================================================ */
+function renderAuditPage(){
+  let body;
+  if(state.auditLog.length){
+    const rows = [...state.auditLog].reverse();
+    body = `
+    ${statusBadgeHtml(state.committedStatus)}
+    <div class="table-wrap" style="margin-top:12px">
+      <table class="dframe">
+        <thead><tr><th>Timestamp</th><th>Event</th><th>Actor</th><th>Details</th></tr></thead>
+        <tbody>
+          ${rows.map(e=>`<tr><td>${esc(e.Timestamp)}</td><td>${esc(e.Event)}</td><td>${esc(e.Actor)}</td><td>${esc(e.Details)}</td></tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:14px"><button class="btn" style="width:auto;padding:0 18px" id="export-audit-btn">Export Audit Log (JSON)</button></div>
+    `;
+  }else{
+    body = `
+    ${statusBadgeHtml(state.committedStatus)}
+    <div class="alert info">No audit events yet. Run AI triage to begin the audit trail.</div>
+    `;
+  }
+
+  return `
+  <hr class="divider">
+  <div class="section-kicker">Governance record</div>
+  <div class="section-title">Audit &amp; Feedback</div>
+  <div class="section-copy">Trace AI recommendations and human decisions across the active session.</div>
+  ${body}
+  `;
+}
+
+function wireAuditPage(){
+  const btn = document.getElementById("export-audit-btn");
+  if(!btn) return;
+  btn.addEventListener("click", ()=>{
+    const json = JSON.stringify(state.auditLog, null, 2);
+    const blob = new Blob([json], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "claim_triage_audit_log.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+}
+
+/* ============================================================
+   PAGE: RESOURCES
+   ============================================================ */
+function renderResourcesPage(){
+  return `
+  <div class="section-kicker">Reference</div>
+  <div class="section-title">Resources &amp; Architecture</div>
+  <div class="section-copy">Prototype architecture, integration points and production governance controls.</div>
+
+  <details class="expander" open>
+    <summary>Prototype Architecture &amp; Integration Notes</summary>
+    <pre>
+### Current prototype
+
+<code>Claim Input</code>
+→ <code>RTOCF Prompt Contract</code>
+→ <code>Deterministic Triage Simulator</code>
+→ <code>Schema Validation</code>
+→ <code>Confidence / Risk Controls</code>
+→ <code>Human Verification</code>
+→ <code>Audit Log</code>
+
+### Future LLM integration
+
+Replace the internals of <code>callTriageEngine()</code> with an
+approved enterprise LLM endpoint.
+
+Environment placeholder:
+
+<code>[API_KEY_ENV_VAR]</code>
+
+Core claims integration placeholder:
+
+<code>[DATABASE_ENDPOINT]</code>
+
+### Required production controls
+
+- Server-side authentication and authorization
+- Secure secrets management
+- PII encryption and data-retention controls
+- API request/response logging with sensitive-data protection
+- Versioned prompts and models
+- Formal JSON/schema validation
+- Deterministic HITL enforcement outside the LLM
+- Policy/rule retrieval from governed sources
+- Model monitoring and drift detection
+- Human override logging
+- Audit-log persistence
+- Prompt-injection testing
+- Rate limiting and timeout handling
+- Approved disaster/fallback workflow
+
+The current session-state audit trail is for demonstration only
+and is not a production immutable audit store.
+    </pre>
+  </details>
+  `;
+}
+
+/* ============================================================
+   MASTER RENDER
+   ============================================================ */
+function render(){
+  renderNav();
+  renderSidebar();
+
+  const main = document.getElementById("main");
+  let html = "";
+  if(state.page === "workspace") html = renderWorkspacePage();
+  else if(state.page === "claims") html = renderClaimsPage();
+  else if(state.page === "hitl") html = renderHitlPage();
+  else if(state.page === "audit") html = renderAuditPage();
+  else if(state.page === "resources") html = renderResourcesPage();
+  main.innerHTML = `<div class="page-shell">${html}</div>`;
+
+  if(state.page === "workspace" || state.page === "claims"){
+    wireIntakeAndOutput();
+  }
+  if(state.page === "workspace"){
+    document.querySelectorAll("[data-quick]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        state.activeWorkspace = btn.getAttribute("data-quick");
+        state.page = btn.getAttribute("data-quickpage");
+        location.hash = state.page;
+        render();
+      });
+    });
+  }
+  if(state.page === "hitl") wireHitlPage();
+  if(state.page === "audit") wireAuditPage();
+
+  document.querySelectorAll("[data-nav]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      state.page = el.getAttribute("data-nav");
+      location.hash = state.page;
+      render();
+    });
+  });
+}
+
+/* ============================================================
+   ROUTING (hash-based, so the URL is shareable/deployable)
+   ============================================================ */
+function syncPageFromHash(){
+  const h = location.hash.replace("#","");
+  state.page = PAGE_LABELS[h] ? h : "workspace";
+}
+
+window.addEventListener("hashchange", ()=>{
+  syncPageFromHash();
+  render();
+});
+
+wireMobileNavToggle();
+syncPageFromHash();
+render();
+
+})();
+</script>
+</body>
+</html>
